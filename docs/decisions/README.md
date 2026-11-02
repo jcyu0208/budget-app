@@ -15,7 +15,7 @@ remember *why*, not to produce polished docs.
 
 | #   | Title                                                  | Status |
 | --- | ------------------------------------------------------ | ------ |
-| 003 | [Reviewing agent code](003-reviewing-agent-code.md)    | Open   |
+| 001 | [Reviewing agent code](001-reviewing-agent-code.md)    | Open   |
 
 ## Adding a decision
 

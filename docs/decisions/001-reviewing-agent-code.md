@@ -1,4 +1,4 @@
-# 003: Reviewing agent code
+# 001: Reviewing agent code
 
 - **Status:** Open — try in Milestone 1 and record the result in the log
 - **Date:** 2026-11-03
