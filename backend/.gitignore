@@ -1,0 +1,7 @@
+# Compiled binaries / build output
+/bin/
+/server
+
+# Test & coverage artifacts
+*.test
+*.out
