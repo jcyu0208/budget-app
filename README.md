@@ -29,6 +29,24 @@ curl localhost:8080/health   # {"status":"ok"}
 
 - **Backend only:** see [backend/README.md](backend/README.md).
 
+## Testing
+
+```sh
+./scripts/test.sh                # run all test types
+./scripts/test.sh unit           # unit tests only
+./scripts/test.sh integration    # integration tests only (none yet)
+./scripts/test.sh e2e            # end-to-end tests only (none yet)
+```
+
+Extra arguments pass straight through to the underlying runner, e.g.
+`./scripts/test.sh unit -run TestHealthHandler -v`.
+
+Test types (more can be added as the project grows):
+
+- **unit** — fast, no external dependencies. (Go: the default build.)
+- **integration** — needs external deps; Go test files tagged `//go:build integration`.
+- **e2e** — end-to-end against a running app (not set up yet).
+
 ## Project conventions
 
 - Operating rules (feature branches, PR-only merges to `main`, test-first, no committed
