@@ -1,0 +1,49 @@
+#!/bin/sh
+# Scan staged changes for likely secrets before allowing a commit.
+# Dependency-free (POSIX sh + grep). Override (false positives): git commit --no-verify
+
+fail=0
+
+# 1) Refuse to commit tracked .env files (only .env.example is allowed).
+staged_files=$(git diff --cached --name-only --diff-filter=ACM)
+for f in $staged_files; do
+	case "$f" in
+	.env.example) ;;
+	.env | .env.* | *.pem | *.key)
+		echo "✖ Refusing to commit secret-bearing file: $f" >&2
+		fail=1
+		;;
+	esac
+done
+
+# 2) Scan the staged diff content for common secret patterns.
+#    Only added lines (leading '+'), excluding the diff header '+++'.
+added=$(git diff --cached --no-color --diff-filter=ACM -U0 | grep -E '^\+' | grep -Ev '^\+\+\+')
+
+match() {
+	printf '%s\n' "$added" | grep -Eq "$1"
+}
+
+if match 'BEGIN ([A-Z ]+ )?PRIVATE KEY'; then
+	echo "✖ Possible private key detected in staged changes." >&2
+	fail=1
+fi
+if match 'AKIA[0-9A-Z]{16}'; then
+	echo "✖ Possible AWS access key ID detected in staged changes." >&2
+	fail=1
+fi
+# Generic credential assignments with a non-trivial value (8+ chars).
+if match '(api[_-]?key|secret|token|password|passwd|pwd)["'"'"']?[[:space:]]*[:=][[:space:]]*["'"'"']?[A-Za-z0-9/+_-]{8,}'; then
+	echo "✖ Possible hardcoded credential (api_key/secret/token/password) detected." >&2
+	fail=1
+fi
+
+if [ "$fail" -ne 0 ]; then
+	echo "" >&2
+	echo "Commit aborted by pre-commit secret scan (see AGENTS.md)." >&2
+	echo "Move the secret to an environment variable / untracked .env file." >&2
+	echo "If this is a false positive: git commit --no-verify" >&2
+	exit 1
+fi
+
+exit 0

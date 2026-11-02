@@ -1,0 +1,11 @@
+# Secrets & environment
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets.*
+.secrets/
+
+# Local Claude settings (belt-and-suspenders with global ignore)
+.claude/settings.local.json
