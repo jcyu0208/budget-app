@@ -6,7 +6,10 @@ Go HTTP backend for budget-app (standard library `net/http`).
 
 - Go 1.27+
 
-## Run
+## Run (backend only)
+
+The backend runs standalone — no frontend or other services required.
+(To run the whole app, use `./scripts/dev.sh` from the repo root instead.)
 
 ```sh
 cd backend
