@@ -3,6 +3,8 @@
 These rules are binding for all contributors, human and AI. Agents must follow
 them without being re-asked each session.
 
+Before starting any feature, read docs/feature-workflow.md and follow it.
+
 ## Setup (run once per clone)
 
 Enable the shared git hooks:
