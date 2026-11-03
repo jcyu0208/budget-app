@@ -116,27 +116,51 @@ Assign + Available" rule; positive Available carries forward; leftover Ready to 
 carries forward; **cash overspending is deducted from next month's Ready to Assign and
 does not carry as negative.**
 
-**Less sure / deliberately simplified:** the exact handling of **credit-card**
-overspending (YNAB routes it through a separate Credit Card Payment category — I've
-left credit cards out); whether a **$0 transaction** should be allowed; the precise
-wording of in-app prompts. These are open choices, not settled facts.
+**Less sure / deliberately simplified:** whether a **$0 transaction** should be
+allowed; the precise wording of in-app prompts; and the exact rules for the
+out-of-scope items (credit cards, loans) for when we build them. These are open
+choices, not settled facts.
 
 **Where this came from:** YNAB's official support pages for month rollover and
 overspending, plus general knowledge of the app and third-party reviews for the
 feature overview.
 
-## Later (not part of the core flow)
+## Out of scope for MVP — the roadmap
 
-Recurring / scheduled transactions · goals & targets · reports and Age of Money · bank
-syncing & auto-import · reconciliation · tracking accounts & net worth · full
-credit-card handling.
+The MVP is **cash-only**: every account behaves like cash or a bank account you spend
+from directly. The capabilities below are deliberately **not** in the MVP. Each is
+designed to be added later as its own feature **without changing the cash-only core**,
+so deferring them now costs us nothing. The order is a proposed priority — you decide.
+
+1. **Repeating transactions** (scheduled / recurring) — saved transactions that appear
+   automatically on a date (rent, salary, subscriptions). The MVP is manual entry; this
+   is pure convenience layered on the same flow.
+2. **Targets / goals** — a per-category "assign $X this month / by this date" that
+   guides and tracks how much to assign. Assigning already works without it.
+3. **Reconciliation** — matching an account to its real-world balance and recording an
+   adjustment when they differ. Add once the core numbers are trusted.
+4. **Reports & Age of Money** — net worth, income vs. expense, spending by category, and
+   the "how old is the money you spend" metric. Reporting sits on top of existing data;
+   it adds nothing to the flow.
+5. **Credit cards** — the full YNAB mechanic: spending on a credit account moves the
+   budgeted money into a dedicated "Credit Card Payment" category, so the cash to pay
+   the bill is always set aside. This is genuinely its own feature. The cash-only MVP is
+   built so it can be added later without reworking the core.
+6. **Loans & tracking accounts** — non-budget accounts (mortgages, car loans,
+   investments) that affect net worth but aren't spent from day to day, plus loan payoff
+   tracking. A separate concern from the budgeting loop.
+7. **Bank syncing / import** — pulling transactions from a bank automatically instead of
+   typing them. An integration layer, not core behaviour.
+
+Also later, smaller: multiple budgets, a managed payee list, multiple currencies.
 
 ---
 
 ## Proposed MVP *(a proposal — you decide what's in)*
 
 The smallest behaviors that complete the three journeys, in build order. Each is meant
-to be small enough to build in ~45 minutes or less.
+to be small enough to build in ~45 minutes or less. **All accounts are cash-only** —
+credit cards, loans, and repeating transactions are on the roadmap above, not here.
 
 1. See an **empty budget** and **add an account** with a starting balance; Ready to
    Assign reflects it.
