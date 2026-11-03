@@ -1,232 +1,157 @@
-# budget-app — Product Spec (YNAB-style)
+# How YNAB Works — User Journeys
 
-A like-for-like model of how YNAB works at its core, told through user journeys,
-with the goal of identifying the **essential components for an MVP**. The focus is
-the **money flow** — accounts, assigning money, transactions, and how balances
-move — not convenience features (bank sync, recurring transactions, reports).
+A like-for-like description of YNAB's core flow, in plain language and domain words
+only. No architecture or technical choices here — that's yours to decide.
 
----
+**The core idea:** you can only budget money you actually have. When money arrives it
+sits in one pool called **Ready to Assign**. You give every dollar a job by moving it
+into **categories**. When you spend, a transaction lowers an account and lowers the
+category it came from. One rule always holds:
 
-## 1. The idea in one paragraph
+> **Everything in your accounts = Ready to Assign + everything Available across your categories.**
 
-You can only budget money you **actually have** (not money you expect). When money
-arrives it lands in a single pool called **Ready to Assign**. You then give every
-dollar a job by **assigning** it to **categories** (Rent, Groceries, …). When you
-spend, you record a **transaction** against an account and a category; the
-category's remaining balance goes down, and so does the account. The whole app is a
-loop: *money in → assign it → spend it → watch the balances → adjust.*
-
-## 2. Mental model & glossary
-
-- **Account** — a real place money sits (Checking, Savings, Cash). For the MVP, all
-  accounts are **on-budget** (their money is budgetable). _Tracking accounts_
-  (investments, loans) are out of scope (see §9).
-- **Ready to Assign (RTA)** — the pool of money that has arrived but hasn't been
-  given a job yet. The app constantly nudges this toward **0**.
-- **Category** — a job for money (Rent, Groceries). Grouped into **Category Groups**
-  (e.g. "Monthly Bills") for organisation.
-- **Assigned / Activity / Available** — the three numbers every category has **for a
-  given month**:
-  - **Assigned** — money you put into the category this month.
-  - **Activity** — money that moved out (spending) this month (negative).
-  - **Available** — the running balance you can still spend. **It rolls over to next
-    month.** `Available = carryover_from_prev_month + Assigned + Activity`.
-- **Transaction** — money entering or leaving an account: an **inflow** (+) or
-  **outflow** (−), tied to a **payee**, a **category**, a date, and an optional memo.
-- **Transfer** — moving money between two of your own accounts (no category).
-
-### The one invariant that must always hold
-
-> **Σ(account balances) = Ready to Assign + Σ(category Available)**
-
-Every operation below is designed to keep this true. If a change ever breaks it,
-there's a bug. This identity is the single most important thing to protect in code
-and in tests.
-
-## 3. Money representation
-
-Store money as **integer minor units** (cents), never floats. All arithmetic is
-integer. (YNAB itself uses "milliunits"; cents are enough for us.) This avoids
-rounding drift and makes the invariant in §2 exact.
+Each category, each month, has three numbers: **Assigned** (what you put in this
+month), **Activity** (what moved out this month), and **Available** (what's left to
+spend — this is the number that carries forward).
 
 ---
 
-## 4. Primary user journey (fresh account → first spend)
+## Journey 1 — A fresh account
 
-This is the flow the MVP must support, end to end.
+**What the user sees first:** an empty budget. No accounts, no categories, Ready to
+Assign is $0. The only sensible next step is "Add your first account."
 
-### Step 0 — Empty state
-A new user has a budget with **no accounts**, **no categories**, and **Ready to
-Assign = 0**. The app should guide them to "Add your first account."
+**What they do:**
+1. **Add an account** — name, type, and a starting balance (e.g. Checking, $0, with
+   income to come). A positive starting balance immediately appears in **Ready to
+   Assign** as money waiting for a job.
+2. **Create categories** (optionally in groups) — the jobs money can have: Rent,
+   Groceries, Fun Money. New categories start empty: Available $0.
+3. **Start budgeting** — move money out of Ready to Assign into categories. Each
+   assignment lowers Ready to Assign and raises that category's Available. The goal
+   is to reach **Ready to Assign = $0** — every dollar has a job.
 
-### Step 1 — Add the first account
-The user creates an account (name + type + **starting balance**, e.g. Checking,
-`$1,000.00`).
-- The account now has a balance of `$1,000`.
-- That starting balance is **income into the budget**, so **Ready to Assign becomes
-  `$1,000`**.
-- Nothing is assigned yet. The app shows: "You have $1,000 to assign."
+**Edge cases:** *zero* — an account added with $0 balance leaves nothing to assign
+yet. *Negative* — assigning more than Ready to Assign holds pushes it below $0; show
+it loudly, don't block. *Empty* — clear empty states for "no accounts" and "no
+categories." *Duplicate* — two accounts or two categories with the same name should
+be allowed but easy to tell apart. *Very large* — a huge starting balance must still
+display and total correctly.
 
-### Step 2 — Create categories
-The user sets up a few categories (optionally grouped), e.g.
-`Monthly Bills → Rent`, `Everyday → Groceries`, `Everyday → Fun Money`.
-- New categories start with Assigned `0`, Activity `0`, Available `0`.
-- **Ready to Assign is unchanged** — creating a category doesn't move money.
+## Journey 2 — After each transaction (the core flow)
 
-### Step 3 — Give every dollar a job (assign)
-The user assigns money from Ready to Assign into categories:
-Rent `$600`, Groceries `$300`, Fun Money `$100`.
-- Each assignment: `RTA −= amount`, `category.Assigned += amount`,
-  `category.Available += amount`.
-- After assigning all $1,000, **Ready to Assign = $0**. Goal reached: every dollar
-  has a job.
-- If they assign more than RTA, RTA goes **negative** — a clear warning state
-  ("You've assigned more than you have"). Allowed, but surfaced loudly.
+There are three kinds of transaction. Each one keeps the rule above true.
 
-### Step 4 — Spend money (record a transaction)
-The user buys groceries for `$80` on the Checking account, category Groceries.
-- `account.balance −= $80` → Checking `$920`.
-- `Groceries.Activity −= $80`, `Groceries.Available −= $80` → Groceries Available
-  `$220`.
-- **Ready to Assign is unchanged.**
-- Invariant check: accounts `$920` = RTA `$0` + categories (`Rent 600` + `Groceries
-  220` + `Fun 100`) `$920`. ✓
-
-### Step 5 — More income arrives
-A paycheck of `$2,000` is recorded as an **inflow** to Checking, categorised as
-**Ready to Assign** (i.e. "income", not a spending category).
-- `account.balance += $2,000` → Checking `$2,920`.
-- `RTA += $2,000` → Ready to Assign `$2,000`.
-- The user is back to Step 3: assign the new money.
-
-### Step 6 — Overspending (Roll With the Punches)
-The user spends `$120` on Fun Money, which only had `$100` available.
-- Fun Money Available = `−$20` (allowed, shown in red).
-- The app prompts: **cover it** by moving `$20` from another category
-  (e.g. Groceries → Fun Money). Moving money between categories:
-  `from.Available −= 20`, `to.Available += 20`. Accounts and RTA untouched.
-- This is Rule 3: the budget is meant to be edited, not blown.
-
-### Step 7 — Transfer between accounts (no budget impact)
-The user moves `$500` Checking → Savings.
-- `Checking −= 500`, `Savings += 500`. No category, no Activity, **RTA unchanged**.
-- Total account money is unchanged, so the invariant holds automatically.
-
-### Step 8 — A new month begins (rollover)
-At the 1st of the next month, each category's positive **Available carries forward**
-as next month's starting balance; Assigned and Activity reset to `0` for the new
-month. (Handling of *negative* carryover from overspending is a refinement — see §9.)
-
----
-
-## 5. What happens after each operation (the state-transition table)
-
-| Operation | Account | Category Activity | Category Available | Ready to Assign |
+| The user records… | Account balance | Category Activity | Category Available | Ready to Assign |
 |---|---|---|---|---|
-| Add account (starting balance +X) | +X | — | — | **+X** |
-| Assign X to a category | — | — | **+X** | **−X** |
-| Move X between categories | — | — | −X (from), +X (to) | — |
-| Outflow (spend X, categorised) | −X | **−X** | **−X** | — |
-| Inflow categorised as Ready to Assign (income +X) | +X | — | — | **+X** |
-| Transfer X between two on-budget accounts | −X / +X | — | — | — |
-| Delete / edit a transaction | reverse of the above | reverse | reverse | reverse |
+| **Spending** (account + category) | goes down | goes down | goes down | unchanged |
+| **Income** (marked "to Ready to Assign") | goes up | — | — | goes up |
+| **Transfer** (account → account) | one down, one up | — | — | unchanged |
 
-**Every row preserves `Σ(accounts) = RTA + Σ(Available)`.** This table is effectively
-the spec for the backend and the source of our test cases.
+**What the user sees:** after a spend, the account's balance and the category's
+Available both drop by the amount, and the register shows the new line. After income,
+Ready to Assign grows and they're invited to assign it. Editing or deleting a
+transaction simply reverses its effect.
 
----
+**Edge cases:** *zero* — a $0 transaction: decide whether to accept or reject (it does
+nothing). *Negative* — a refund is income back **into a spending category**, raising
+its Available again (not the same as general income). *Empty* — a spend with no
+category chosen should be flagged; income and transfers legitimately have no category.
+*Duplicate* — the same amount/date/payee entered twice is valid but worth a gentle
+"looks like a duplicate." *Very large* — a spend bigger than the account balance takes
+the account negative; allow it, but flag it.
 
-## 6. What the user needs on screen (MVP)
+## Journey 3 — Month end: overspending and rollover
 
-Three views cover the whole flow:
+**During the month:** a category can be **overspent** — its Available goes negative
+(red). The app's suggestion is to **cover it** by moving money from another category.
+A move lowers one category's Available and raises another's; accounts and Ready to
+Assign don't change.
 
-1. **Accounts / Register**
-   - List of accounts with balances; total of all accounts.
-   - Open an account to see its **register**: a list of transactions (date, payee,
-     category, memo, amount) with add / edit / delete.
-2. **Budget** (the heart of the app)
-   - **Ready to Assign** shown prominently at the top (green at 0, red if negative).
-   - Category groups → categories, each row showing **Assigned | Activity |
-     Available**, with Available colour-coded (positive / zero / negative).
-   - Inline edit of **Assigned**; a "move money between categories" action.
-   - Month selector (even if we start with the current month only).
-3. **Add transaction**
-   - Account, date, payee, inflow/outflow amount, category (or "Ready to Assign" for
-     income), memo.
+**When the month rolls over:**
+- Each category's **positive Available carries forward** as its starting Available
+  next month.
+- **Assigned and Activity reset to $0** for the new month; Available is the running
+  number that carries.
+- **Leftover Ready to Assign carries forward** to the new month.
+- **Cash overspending does not carry as a negative.** Instead, the overspent amount is
+  **subtracted from next month's Ready to Assign**, and the category resets to $0. The
+  budget as a whole pays for the overspend.
 
-## 7. Worked example (doubles as acceptance tests)
-
-Start: no accounts. All values in dollars.
-
-| # | Action | Checking | Savings | RTA | Rent | Groceries | Fun |
-|---|---|---|---|---|---|---|---|
-| 1 | Add Checking, start $1,000 | 1000 | — | 1000 | 0 | 0 | 0 |
-| 2 | Assign 600 / 300 / 100 | 1000 | — | 0 | 600 | 300 | 100 |
-| 3 | Spend $80 Groceries | 920 | — | 0 | 600 | 220 | 100 |
-| 4 | Income +$2,000 (to RTA) | 2920 | — | 2000 | 600 | 220 | 100 |
-| 5 | Spend $120 Fun | 2800 | — | 2000 | 600 | 220 | −20 |
-| 6 | Move $20 Groceries→Fun | 2800 | — | 2000 | 600 | 200 | 0 |
-| 7 | Transfer $500 →Savings | 2300 | 500 | 2000 | 600 | 200 | 0 |
-
-At every row: `Checking + Savings == RTA + Rent + Groceries + Fun`. (Row 7:
-`2300 + 500 = 2000 + 600 + 200 + 0 = 2800`. ✓)
+**Edge cases:** *zero* — a category ending at exactly $0 carries nothing, no special
+case. *Negative* — the overspend case above. *Empty* — a never-used category just
+stays at $0. *Duplicate* — rolling the same month over twice must not double-count;
+rollover should be safe to re-run. *Very large* — a large carried balance, or a large
+overspend pulled from Ready to Assign, must stay correct.
 
 ---
 
-## 8. Essential MVP components
+## Worked example
 
-**Data entities**
-- `Account { id, name, type, balance }` — all on-budget for MVP.
-- `CategoryGroup { id, name }`
-- `Category { id, group_id, name }`
-- `CategoryMonth { category_id, month, assigned, activity, available }` — the
-  per-month numbers (or derive `activity`/`available` from transactions + rollover).
-- `Transaction { id, account_id, date, payee, category_id(nullable), memo, amount,
-  transfer_account_id(nullable) }` — `category_id` is null for income-to-RTA and for
-  transfers; amount is signed (− outflow, + inflow).
-- **Ready to Assign** — a derived value: `Σ(account balances) − Σ(category Available)`
-  (keeping it derived guarantees the invariant can't drift).
+Fresh Checking account (starts at $0). Three categories: Rent, Groceries, Fun Money.
 
-**Operations (map directly to backend endpoints)**
-- Create / list accounts (with starting balance → RTA).
-- Create / list category groups & categories.
-- **Assign** money to a category for a month (and un-assign / change).
-- **Move** money between categories.
-- Create / edit / delete a **transaction** (outflow, income-to-RTA, transfer).
-- Read the **budget view** for a month (RTA + each category's three numbers).
-- Read an **account register**.
+| Step | Action | Checking | Ready to Assign | Rent | Groceries | Fun Money |
+|---|---|---|---|---|---|---|
+| 1 | Income $3,000 (to Ready to Assign) | 3,000 | 3,000 | 0 | 0 | 0 |
+| 2 | Assign 1,500 / 1,000 / 500 | 3,000 | **0** | 1,500 | 1,000 | 500 |
+| 3 | Spend Rent $1,500 | 1,500 | 0 | 0 | 1,000 | 500 |
+| 4 | Spend Groceries $850 | 650 | 0 | 0 | 150 | 500 |
+| 5 | Spend Fun $600 (overspent $100) | 50 | 0 | 0 | 150 | **−100** |
 
-**Invariant to enforce & test everywhere:** §2's identity, after every mutation.
+End of month: Checking $50 = Ready to Assign $0 + (Rent 0 + Groceries 150 + Fun −100). ✓
 
-## 9. Explicitly out of scope for the MVP (and why)
-
-Deferring these keeps the core flow clean; none of them are required to demonstrate
-the YNAB loop:
-- **Recurring / scheduled transactions** — convenience, not flow.
-- **Bank syncing / auto-import** — integration; MVP is manual entry.
-- **Tracking accounts & net worth** — not budgetable; separate concern.
-- **Targets / goals** — guide *how much* to assign, but assigning works without them.
-- **Reconciliation** — matching to a real bank balance; add once the core is solid.
-- **Reports, Age of Money** — reporting on top of the same data.
-- **Credit cards (YNAB's auto payment-category mechanic)** — genuinely complex;
-  MVP treats every account as cash-like (spending reduces category Available
-  directly). Revisit as its own spec.
-- **Negative-balance rollover rules** — in YNAB, cash overspending is pulled from
-  next month's Ready to Assign. MVP can start single-month; add the rollover rule
-  when we implement months fully.
-
-## 10. Open decisions (to confirm before building)
-
-1. **Single budget** for MVP (one user, one budget), or multi-budget from day one?
-   _Recommended: single._
-2. **Months**: implement real month rollover now, or start with a single "current
-   month" and add rollover next? _Recommended: current month first._
-3. **Payees**: free-text string on the transaction (simple) vs. a managed Payee
-   entity? _Recommended: free-text string for MVP._
-4. **Credit cards**: confirm MVP treats them as cash-like (no auto payment category).
+**Next month rolls over:**
+- Groceries carries its **+$150**; Rent and Fun carry $0 (Fun's −$100 does *not* carry).
+- Fun's **$100 cash overspend is deducted from Ready to Assign**.
+- New month start: Checking **$50**, Ready to Assign **−$100**, Rent 0, Groceries 150,
+  Fun 0. (Still balances: 50 = −100 + 150.) The user must bring in or free up $100 to
+  get Ready to Assign back to $0.
 
 ---
 
-*This spec intentionally describes the **flow**. Once we agree on §10, the §5 table
-and §7 example become our first test cases, and §8 becomes the first set of backend
-models and endpoints.*
+## What I'm sure of vs. unsure of
+
+**Sure (checked against YNAB's help pages):** the core loop; the "accounts = Ready to
+Assign + Available" rule; positive Available carries forward; leftover Ready to Assign
+carries forward; **cash overspending is deducted from next month's Ready to Assign and
+does not carry as negative.**
+
+**Less sure / deliberately simplified:** the exact handling of **credit-card**
+overspending (YNAB routes it through a separate Credit Card Payment category — I've
+left credit cards out); whether a **$0 transaction** should be allowed; the precise
+wording of in-app prompts. These are open choices, not settled facts.
+
+**Where this came from:** YNAB's official support pages for month rollover and
+overspending, plus general knowledge of the app and third-party reviews for the
+feature overview.
+
+## Later (not part of the core flow)
+
+Recurring / scheduled transactions · goals & targets · reports and Age of Money · bank
+syncing & auto-import · reconciliation · tracking accounts & net worth · full
+credit-card handling.
+
+---
+
+## Proposed MVP *(a proposal — you decide what's in)*
+
+The smallest behaviors that complete the three journeys, in build order. Each is meant
+to be small enough to build in ~45 minutes or less.
+
+1. See an **empty budget** and **add an account** with a starting balance; Ready to
+   Assign reflects it.
+2. **Create category groups and categories** (start empty).
+3. **Assign** money from Ready to Assign to a category; both numbers update.
+4. Record a **spending** transaction; account balance, category Activity and Available
+   update.
+5. Record **income** to Ready to Assign; Ready to Assign updates.
+6. **Move money** between categories (to cover overspending).
+7. **Transfer** between two accounts.
+8. **View the budget** for the month: Ready to Assign plus each category's Assigned /
+   Activity / Available.
+9. **View an account's transactions** (the register).
+10. **Roll into a new month:** carry positive Available, carry leftover Ready to
+    Assign, and deduct cash overspending from Ready to Assign.
+
+Steps 1–5 already demonstrate the whole philosophy end to end; 6–10 complete the
+journeys.
