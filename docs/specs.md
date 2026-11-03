@@ -40,26 +40,33 @@ display and total correctly.
 
 ## Journey 2 — After each transaction (the core flow)
 
-There are three kinds of transaction. Each one keeps the rule above true.
+There are four kinds of transaction. Each one keeps the rule above true.
 
 | The user records… | Account balance | Category Activity | Category Available | Ready to Assign |
 |---|---|---|---|---|
 | **Spending** (account + category) | goes down | goes down | goes down | unchanged |
+| **Refund** (account + category) | goes up | goes up | goes up | unchanged |
 | **Income** (marked "to Ready to Assign") | goes up | — | — | goes up |
 | **Transfer** (account → account) | one down, one up | — | — | unchanged |
 
 **What the user sees:** after a spend, the account's balance and the category's
-Available both drop by the amount, and the register shows the new line. After income,
-Ready to Assign grows and they're invited to assign it. Editing or deleting a
-transaction simply reverses its effect.
+Available both drop by the amount, and the register shows the new line. A **Refund** is
+the exact reverse of a spend: money returns to the account and back **into the category
+it was spent from**, so that category's Available goes up. (A refund is *not* income —
+income has no category and goes to Ready to Assign.) After income, Ready to Assign grows
+and they're invited to assign it.
 
-**Edge cases:** *zero* — a $0 transaction: decide whether to accept or reject (it does
-nothing). *Negative* — a refund is income back **into a spending category**, raising
-its Available again (not the same as general income). *Empty* — a spend with no
-category chosen should be flagged; income and transfers legitimately have no category.
-*Duplicate* — the same amount/date/payee entered twice is valid but worth a gentle
-"looks like a duplicate." *Very large* — a spend bigger than the account balance takes
-the account negative; allow it, but flag it.
+**Editing and deleting** a transaction are **not built for the MVP** (they're on the
+roadmap) — in the MVP a transaction is entered once, and a mistake is corrected with a
+balancing entry (e.g. a Refund). We still design the roll-up numbers now so edits are
+correct later; see *Planning note — edit-safe roll-ups* below.
+
+**Edge cases:** *zero* — **$0 transactions are rejected** (they change nothing and only
+add noise). *Negative* — money coming back is the **Refund** action above, not a
+negative spend. *Empty* — a spend or refund with no category is flagged; income and
+transfers legitimately have no category. *Duplicate* — the same amount/date/payee
+entered twice is valid but worth a gentle "looks like a duplicate." *Very large* — a
+spend bigger than the account balance takes the account negative; allow it, but flag it.
 
 ## Journey 3 — Month end: overspending and rollover
 
@@ -83,6 +90,24 @@ case. *Negative* — the overspend case above. *Empty* — a never-used category
 stays at $0. *Duplicate* — rolling the same month over twice must not double-count;
 rollover should be safe to re-run. *Very large* — a large carried balance, or a large
 overspend pulled from Ready to Assign, must stay correct.
+
+---
+
+## Planning note — edit-safe roll-ups (not built for MVP)
+
+We won't build transaction **editing or deleting** in the MVP, but we design the numbers
+now so it can be added later without a rewrite. Every rolled-up number — a category's
+**Activity** and **Available**, **Ready to Assign**, and the amounts **carried into the
+next month** — should be **calculated from the underlying transactions and assignments**,
+so that changing or removing one transaction produces the correct new totals rather than
+leaving a stale running tally.
+
+The hardest case to keep correct is an edit to a transaction in an **already-rolled-over
+month**: it changes that month's Available, which changes what carried forward, which
+cascades through every later month's Ready to Assign. Design the roll-up so that
+re-running it after such a change always lands on the right numbers and is safe to
+repeat. Getting this shape right now is the whole reason we flag edits as out-of-scope
+rather than ignoring them.
 
 ---
 
@@ -116,10 +141,10 @@ Assign + Available" rule; positive Available carries forward; leftover Ready to 
 carries forward; **cash overspending is deducted from next month's Ready to Assign and
 does not carry as negative.**
 
-**Less sure / deliberately simplified:** whether a **$0 transaction** should be
-allowed; the precise wording of in-app prompts; and the exact rules for the
-out-of-scope items (credit cards, loans) for when we build them. These are open
-choices, not settled facts.
+**Less sure / deliberately simplified:** the precise wording of in-app prompts, and the
+exact rules for the out-of-scope items (editing, credit cards, loans) for when we build
+them. (Decided: **$0 transactions are rejected.**) These are open choices, not settled
+facts.
 
 **Where this came from:** YNAB's official support pages for month rollover and
 overspending, plus general knowledge of the app and third-party reviews for the
@@ -132,24 +157,27 @@ from directly. The capabilities below are deliberately **not** in the MVP. Each 
 designed to be added later as its own feature **without changing the cash-only core**,
 so deferring them now costs us nothing. The order is a proposed priority — you decide.
 
-1. **Repeating transactions** (scheduled / recurring) — saved transactions that appear
+1. **Editing & deleting transactions** — correcting or removing a past entry and having
+   every roll-up update correctly (see the planning note). Deferred from the MVP, but the
+   numbers are designed for it now.
+2. **Repeating transactions** (scheduled / recurring) — saved transactions that appear
    automatically on a date (rent, salary, subscriptions). The MVP is manual entry; this
    is pure convenience layered on the same flow.
-2. **Targets / goals** — a per-category "assign $X this month / by this date" that
+3. **Targets / goals** — a per-category "assign $X this month / by this date" that
    guides and tracks how much to assign. Assigning already works without it.
-3. **Reconciliation** — matching an account to its real-world balance and recording an
+4. **Reconciliation** — matching an account to its real-world balance and recording an
    adjustment when they differ. Add once the core numbers are trusted.
-4. **Reports & Age of Money** — net worth, income vs. expense, spending by category, and
+5. **Reports & Age of Money** — net worth, income vs. expense, spending by category, and
    the "how old is the money you spend" metric. Reporting sits on top of existing data;
    it adds nothing to the flow.
-5. **Credit cards** — the full YNAB mechanic: spending on a credit account moves the
+6. **Credit cards** — the full YNAB mechanic: spending on a credit account moves the
    budgeted money into a dedicated "Credit Card Payment" category, so the cash to pay
    the bill is always set aside. This is genuinely its own feature. The cash-only MVP is
    built so it can be added later without reworking the core.
-6. **Loans & tracking accounts** — non-budget accounts (mortgages, car loans,
+7. **Loans & tracking accounts** — non-budget accounts (mortgages, car loans,
    investments) that affect net worth but aren't spent from day to day, plus loan payoff
    tracking. A separate concern from the budgeting loop.
-7. **Bank syncing / import** — pulling transactions from a bank automatically instead of
+8. **Bank syncing / import** — pulling transactions from a bank automatically instead of
    typing them. An integration layer, not core behaviour.
 
 Also later, smaller: multiple budgets, a managed payee list, multiple currencies.
@@ -168,14 +196,17 @@ credit cards, loans, and repeating transactions are on the roadmap above, not he
 3. **Assign** money from Ready to Assign to a category; both numbers update.
 4. Record a **spending** transaction; account balance, category Activity and Available
    update.
-5. Record **income** to Ready to Assign; Ready to Assign updates.
-6. **Move money** between categories (to cover overspending).
-7. **Transfer** between two accounts.
-8. **View the budget** for the month: Ready to Assign plus each category's Assigned /
+5. Record a **Refund** into a category; account, category Activity and Available go back
+   up.
+6. Record **income** to Ready to Assign; Ready to Assign updates.
+7. **Move money** between categories (to cover overspending).
+8. **Transfer** between two accounts.
+9. **View the budget** for the month: Ready to Assign plus each category's Assigned /
    Activity / Available.
-9. **View an account's transactions** (the register).
-10. **Roll into a new month:** carry positive Available, carry leftover Ready to
-    Assign, and deduct cash overspending from Ready to Assign.
+10. **View an account's transactions** (the register).
+11. **Roll into a new month:** carry positive Available, carry leftover Ready to Assign,
+    and deduct cash overspending from Ready to Assign.
 
-Steps 1–5 already demonstrate the whole philosophy end to end; 6–10 complete the
-journeys.
+Steps 1–4 already demonstrate the core loop (add account → assign → spend); the rest
+complete the journeys. **$0 transactions are rejected; editing/deleting is not in the
+MVP** (a mistake is fixed with a balancing entry such as a Refund).
