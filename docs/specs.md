@@ -23,8 +23,9 @@ Assign is $0. The only sensible next step is "Add your first account."
 
 **What they do:**
 1. **Add an account** — name, type, and a starting balance (e.g. Checking, $0, with
-   income to come). A positive starting balance immediately appears in **Ready to
-   Assign** as money waiting for a job.
+   income to come). The **starting balance** is the account's opening inflow (the first
+   of the two inflow types — see Journey 2): a positive amount immediately appears in
+   **Ready to Assign** as money waiting for a job.
 2. **Create categories** (optionally in groups) — the jobs money can have: Rent,
    Groceries, Fun Money. New categories start empty: Available $0.
 3. **Start budgeting** — move money out of Ready to Assign into categories. Each
@@ -40,13 +41,18 @@ display and total correctly.
 
 ## Journey 2 — After each transaction (the core flow)
 
-There are four kinds of transaction. Each one keeps the rule above true.
+There are five kinds of transaction. Each one keeps the rule above true. Two of them are
+**inflows** (money in): a **starting balance**, set once when an account is created, and
+**income** (e.g. salary), added at any time. Both behave the same on the numbers — they
+raise the account and raise Ready to Assign — but they're separate so "money I already
+had" and "money I just earned" stay distinguishable.
 
 | The user records… | Account balance | Category Activity | Category Available | Ready to Assign |
 |---|---|---|---|---|
 | **Spending** (account + category) | goes down | goes down | goes down | unchanged |
 | **Refund** (account + category) | goes up | goes up | goes up | unchanged |
-| **Income** (marked "to Ready to Assign") | goes up | — | — | goes up |
+| **Starting balance** (once, at account creation) | goes up | — | — | goes up |
+| **Income**, e.g. salary ("to Ready to Assign") | goes up | — | — | goes up |
 | **Transfer** (account → account) | one down, one up | — | — | unchanged |
 
 **What the user sees:** after a spend, the account's balance and the category's
@@ -190,15 +196,16 @@ The smallest behaviors that complete the three journeys, in build order. Each is
 to be small enough to build in ~45 minutes or less. **All accounts are cash-only** —
 credit cards, loans, and repeating transactions are on the roadmap above, not here.
 
-1. See an **empty budget** and **add an account** with a starting balance; Ready to
-   Assign reflects it.
+1. See an **empty budget** and **add an account** with a **starting balance** (inflow
+   type #1); Ready to Assign reflects it.
 2. **Create category groups and categories** (start empty).
 3. **Assign** money from Ready to Assign to a category; both numbers update.
 4. Record a **spending** transaction; account balance, category Activity and Available
    update.
 5. Record a **Refund** into a category; account, category Activity and Available go back
    up.
-6. Record **income** to Ready to Assign; Ready to Assign updates.
+6. Record **income** (inflow type #2, e.g. salary) to Ready to Assign; Ready to Assign
+   updates.
 7. **Move money** between categories (to cover overspending).
 8. **Transfer** between two accounts.
 9. **View the budget** for the month: Ready to Assign plus each category's Assigned /
