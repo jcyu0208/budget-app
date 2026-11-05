@@ -47,6 +47,24 @@ Test types (more can be added as the project grows):
 - **integration** — needs external deps; Go test files tagged `//go:build integration`.
 - **e2e** — end-to-end against a running app (not set up yet).
 
+## Merging changes
+
+`main` is protected — every change lands via pull request. Direct pushes, force-pushes,
+and branch deletion are blocked for everyone (no bypass).
+
+To merge a PR, two things must be true:
+
+- **CI is green.** GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml))
+  runs on every pull request: `gofmt` check → `go vet` → `go build` → `go test -race`. The
+  **`backend`** check is a **required status check** — a PR cannot merge while it is red.
+- **The branch is up to date with `main`.** If `main` advances after your PR was opened,
+  update your branch (merge/rebase `main` in) and let CI re-run. This guarantees every
+  merge is tested against the latest `main`, so one PR can't silently break another.
+
+Locally, the shared git hooks ([`.githooks/`](.githooks/)) also block direct pushes to
+`main` and scan commits for secrets — enable them once per clone:
+`git config core.hooksPath .githooks`.
+
 ## Project conventions
 
 - Operating rules (feature branches, PR-only merges to `main`, test-first, no committed
