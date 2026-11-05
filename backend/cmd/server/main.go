@@ -7,14 +7,18 @@ import (
 	"os"
 	"time"
 
+	"github.com/jcyu0208/budget-app/backend/internal/budget"
+	"github.com/jcyu0208/budget-app/backend/internal/budget/memory"
 	"github.com/jcyu0208/budget-app/backend/internal/server"
 )
 
 func main() {
+	svc := budget.NewService(memory.NewAccountRepository(), memory.NewIDGenerator())
+
 	addr := ":" + port()
 	srv := &http.Server{
 		Addr:              addr,
-		Handler:           server.NewRouter(),
+		Handler:           server.NewRouter(svc),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
