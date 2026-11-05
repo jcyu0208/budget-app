@@ -59,5 +59,11 @@ adapters skeleton.
 
 ## Links
 
-- Code: _(added after build)_
-- Tests: _(added after build)_
+- Core: `backend/internal/budget/` (`account.go`, `ports.go`, `service.go`).
+- Adapters: `backend/internal/budget/memory/` (storage + id gen); `backend/internal/server/server.go` (HTTP); wired in `backend/cmd/server/main.go`.
+- Tests: `backend/internal/budget/service_test.go` (unit), `backend/internal/budget/budgettest/contract.go` + `backend/internal/budget/memory/repository_test.go` (contract), `backend/internal/server/accounts_functional_test.go` (functional + invariant).
+
+## API
+
+- `POST /accounts` — `{ name, kind: "cash", starting_balance }` (cents) → `201 { id, name, kind, balance }`; `400` on empty name / non-cash kind / bad JSON.
+- `GET /budget` → `200 { ready_to_assign, accounts: [{ id, name, kind, balance }] }`.
