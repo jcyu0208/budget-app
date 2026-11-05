@@ -49,21 +49,12 @@ Test types (more can be added as the project grows):
 
 ## Merging changes
 
-`main` is protected — every change lands via pull request. Direct pushes, force-pushes,
-and branch deletion are blocked for everyone (no bypass).
+`main` is protected: changes land via pull request only (no direct/force pushes, no
+bypass). A PR merges when **CI is green** and the **branch is up to date with `main`**.
 
-To merge a PR, two things must be true:
-
-- **CI is green.** GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml))
-  runs on every pull request: `gofmt` check → `go vet` → `go build` → `go test -race`. The
-  **`backend`** check is a **required status check** — a PR cannot merge while it is red.
-- **The branch is up to date with `main`.** If `main` advances after your PR was opened,
-  update your branch (merge/rebase `main` in) and let CI re-run. This guarantees every
-  merge is tested against the latest `main`, so one PR can't silently break another.
-
-Locally, the shared git hooks ([`.githooks/`](.githooks/)) also block direct pushes to
-`main` and scan commits for secrets — enable them once per clone:
-`git config core.hooksPath .githooks`.
+CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs `gofmt`, `go vet`,
+`go build`, and `go test -race` on every PR; the `backend` check is required. Local hooks
+also block direct pushes and scan for secrets (`git config core.hooksPath .githooks`).
 
 ## Project conventions
 
