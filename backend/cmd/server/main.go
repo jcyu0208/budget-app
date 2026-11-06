@@ -8,12 +8,13 @@ import (
 	"time"
 
 	"github.com/jcyu0208/budget-app/backend/internal/budget"
+	"github.com/jcyu0208/budget-app/backend/internal/budget/idgen"
 	"github.com/jcyu0208/budget-app/backend/internal/budget/memory"
 	"github.com/jcyu0208/budget-app/backend/internal/server"
 )
 
 func main() {
-	svc := budget.NewService(memory.NewAccountRepository(), memory.NewIDGenerator())
+	svc := budget.NewService(memory.NewAccountRepository(), idgen.New())
 
 	addr := ":" + port()
 	srv := &http.Server{

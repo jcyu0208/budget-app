@@ -46,7 +46,10 @@ adapters skeleton.
 
 - **Core** `internal/budget` (no HTTP/SQL): `Account`, `Kind`, `Money` (int64 cents),
   ports `AccountRepository` + `IDGenerator`, and `Service` (`CreateAccount`, `Budget`).
-- **Adapter (storage)** `internal/budget/memory`: in-memory repo + sequential id generator.
+- **Adapter (storage)** `internal/budget/memory`: in-memory repo. Its sequential id
+  generator is now a **test fake** only.
+- **Adapter (IDs)** `internal/budget/idgen`: the production ID generator (UUIDv7 under the
+  hood) — the only place depending on `github.com/google/uuid`.
 - **Adapter (HTTP)** `internal/server`: `NewRouter(svc)` with `POST /accounts`, `GET /budget`,
   `GET /health`; wired in `cmd/server/main.go`.
 
