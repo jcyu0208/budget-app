@@ -13,3 +13,4 @@ Tracked questions, parked ideas, and assumptions. Status is `open` until resolve
 | 7 | 2026-11-03 | assumption | workflow | agent run hung on an open-ended web task. Always give a bounded page list and a time limit. | open |
 | 8 | 2026-11-05 | assumption | budgeting-mvp | money crosses the API as integer cents (100000 = $1000.00); dollar formatting is a UI concern, deferred | open |
 | 9 | 2026-11-05 | assumption | budgeting-mvp | read side is one combined GET /budget (Ready to Assign + accounts) rather than separate endpoints | open |
+| 10 | 2026-11-07 | question | workflow | if CI passes, what does manual review still add that tests can't (intent vs spec, untested paths, design, security, scope)? continuation of ADR 001 | open |
