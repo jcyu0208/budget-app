@@ -5,13 +5,20 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/jcyu0208/budget-app/backend/internal/budget"
+	"github.com/jcyu0208/budget-app/backend/internal/budget/memory"
 )
+
+func testService() *budget.Service {
+	return budget.NewService(memory.NewAccountRepository(), memory.NewIDGenerator())
+}
 
 func TestHealthHandler(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	rec := httptest.NewRecorder()
 
-	NewRouter().ServeHTTP(rec, req)
+	NewRouter(testService()).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /health: expected status %d, got %d", http.StatusOK, rec.Code)
